@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://amesh:amesh123@cluster0.wfwpbmw.mongodb.net/fileshare?retryWrites=true&w=majority';
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://rameshgprogrammer:010797@cluster0.ghh8iij.mongodb.net/fileshare?retryWrites=true&w=majority';
 
 const DBConnection = async () => {
     try {
