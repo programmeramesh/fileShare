@@ -3,7 +3,8 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://rameshgprogrammer:010797@cluster0.ghh8iij.mongodb.net/fileshare?retryWrites=true&w=majority';
+// Add directConnection=true to avoid buffering timeouts
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://rameshgprogrammer:010797@cluster0.ghh8iij.mongodb.net/fileshare?retryWrites=true&w=majority&directConnection=true';
 
 const DBConnection = async () => {
     const maxRetries = 3;
@@ -12,7 +13,7 @@ const DBConnection = async () => {
     while (retryCount < maxRetries) {
         try {
             // Configure Mongoose settings globally
-            mongoose.set('bufferCommands', true);
+            mongoose.set('bufferCommands', false); // Disable buffering
             mongoose.set('bufferTimeoutMS', 30000);
 
             console.log(`Attempting to connect to MongoDB (attempt ${retryCount + 1}/${maxRetries})...`);
@@ -25,7 +26,9 @@ const DBConnection = async () => {
                 connectTimeoutMS: 30000,
                 dbName: 'fileshare',
                 retryWrites: true,
-                w: 'majority'
+                w: 'majority',
+                directConnection: true, // Add direct connection
+                autoCreate: true // Automatically create collections
             });
 
             // Add connection event listeners
@@ -62,8 +65,41 @@ const DBConnection = async () => {
             const db = mongoose.connection.db;
             const collections = await db.listCollections().toArray();
             if (!collections.some(c => c.name === 'files')) {
-                await db.createCollection('files');
-                console.log('Files collection created');
+                await db.createCollection('files', {
+                    validator: {
+                        $jsonSchema: {
+                            bsonType: "object",
+                            required: ["name", "contentType", "size", "data"],
+                            properties: {
+                                name: {
+                                    bsonType: "string",
+                                    description: "must be a string and is required"
+                                },
+                                contentType: {
+                                    bsonType: "string",
+                                    description: "must be a string and is required"
+                                },
+                                size: {
+                                    bsonType: "number",
+                                    description: "must be a number and is required"
+                                },
+                                data: {
+                                    bsonType: "binData",
+                                    description: "must be a binary data and is required"
+                                },
+                                downloadCount: {
+                                    bsonType: "number",
+                                    description: "must be a number"
+                                },
+                                createdAt: {
+                                    bsonType: "date",
+                                    description: "must be a date"
+                                }
+                            }
+                        }
+                    }
+                });
+                console.log('Files collection created with schema validation');
             }
 
             // Successfully connected, break out of retry loop
