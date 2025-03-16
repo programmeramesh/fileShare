@@ -14,14 +14,16 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
+// Increase payload size limit
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
 // CORS configuration
 app.use(cors({
-    origin: true, // Allow all origins during development
-    credentials: false // Disable credentials requirement
+    origin: true,
+    credentials: false,
+    methods: ['GET', 'POST', 'OPTIONS']
 }));
-
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
 
 // Serve uploaded files statically
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -29,7 +31,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Routes
 app.use('/', router);
 
-// Health check endpoint
+// Health check endpoint (after routes)
 app.get('/health', (req, res) => {
     const healthData = {
         status: 'ok',
@@ -46,7 +48,26 @@ app.get('/health', (req, res) => {
 // Error handling middleware
 app.use((err, req, res, next) => {
     console.error('Error:', err);
-    res.status(500).json({ error: 'Internal server error', details: err.message });
+    
+    // Handle specific error types
+    if (err.name === 'PayloadTooLargeError') {
+        return res.status(413).json({ 
+            error: 'File too large',
+            details: 'The uploaded file exceeds the size limit'
+        });
+    }
+    
+    if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(413).json({ 
+            error: 'File too large',
+            details: 'The uploaded file exceeds the size limit'
+        });
+    }
+
+    res.status(500).json({ 
+        error: 'Internal server error', 
+        details: process.env.NODE_ENV === 'development' ? err.message : 'An unexpected error occurred'
+    });
 });
 
 const PORT = process.env.PORT || 8000;

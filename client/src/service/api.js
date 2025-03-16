@@ -5,10 +5,10 @@ const API_URI = 'https://fileshare-fvrm.onrender.com';
 // Create axios instance with default config
 const axiosInstance = axios.create({
     baseURL: API_URI,
+    timeout: 60000, // 60 second timeout
     headers: {
         'Accept': 'application/json'
-    },
-    timeout: 10000 // 10 second timeout
+    }
 });
 
 // Health check function
@@ -28,9 +28,6 @@ export const checkServerHealth = async () => {
 
 export const uploadFile = async (data) => {
     try {
-        // First check if server is healthy
-        await checkServerHealth();
-
         // For file uploads, we need to set the correct content type
         const config = {
             headers: {
@@ -39,12 +36,20 @@ export const uploadFile = async (data) => {
             onUploadProgress: (progressEvent) => {
                 const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
                 console.log('Upload progress:', percentCompleted);
-            }
+            },
+            // Increase timeout for large files
+            timeout: 120000 // 2 minutes
         };
+
+        // First check server health
+        await axiosInstance.get('/health');
 
         const response = await axiosInstance.post('/upload', data, config);
         return response.data;
     } catch (error) {
+        if (error.code === 'ECONNABORTED') {
+            throw new Error('Upload timed out. Please try again with a smaller file or check your connection.');
+        }
         console.error('Error details:', {
             message: error.message,
             response: error.response?.data,
