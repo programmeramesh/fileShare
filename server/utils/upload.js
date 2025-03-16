@@ -27,23 +27,35 @@ const storage = multer.diskStorage({
     }
 });
 
-const upload = multer({ 
-    storage: storage,
-    limits: {
-        fileSize: 5 * 1024 * 1024, // 5MB limit
-        files: 1 // Only allow 1 file at a time
-    },
-    fileFilter: function (req, file, cb) {
-        // Accept common file types
-        const allowedTypes = /jpeg|jpg|png|gif|pdf|doc|docx|txt/;
-        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-        const mimetype = allowedTypes.test(file.mimetype);
+// File filter function
+const fileFilter = (req, file, cb) => {
+    // Accept common file types
+    const allowedMimeTypes = [
+        // Images
+        'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+        // Documents
+        'application/pdf', 'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'text/plain',
+        // Archives
+        'application/zip', 'application/x-rar-compressed',
+        // Others
+        'application/octet-stream'
+    ];
 
-        if (extname && mimetype) {
-            cb(null, true);
-        } else {
-            cb(new Error('Only specific file types are allowed'));
-        }
+    if (allowedMimeTypes.includes(file.mimetype)) {
+        cb(null, true);
+    } else {
+        cb(new Error(`File type ${file.mimetype} is not allowed. Allowed types: ${allowedMimeTypes.join(', ')}`));
+    }
+};
+
+const upload = multer({
+    storage: storage,
+    fileFilter: fileFilter,
+    limits: {
+        fileSize: 10 * 1024 * 1024, // 10MB limit
+        files: 1 // Only allow 1 file at a time
     }
 });
 
